@@ -15,7 +15,7 @@ zcert is a CLI tool that allows you to install the zscaler Certificate authority
 `> cd C:\Users\user\Download`
 
 - Execute the scrip
-`> ./zcert.ps1`
+`> .\zcert.ps1`
 
 
 ## Contributing
