@@ -132,6 +132,35 @@ function Update-Apps{
 }
 
 
+function Update-Gdrive{
+    #doc https://support.google.com/a/answer/7644837?hl=en
+    #check if gdrive exist
+    $path = "HKLM:\HKEY_LOCAL_MACHINE\SOFTWARE\Google\DriveFS"
+    $test =  test-path -path $path
+    if($test){
+        # check if key exist
+        Write-Log "Google Drive detected. Fixing..."
+        try{
+            Get-ItemProperty -path "HKLM:\HKEY_LOCAL_MACHINE\SOFTWARE\Google\DriveFS" -Name "TrustedRootCertsFile" --ErrorAction Stop
+            Write-Log "Registry key already exist. Overwriting."
+        }
+        catch{
+            Write-Log "Registry key doesn't exist. Creating."
+        }
+        #changing registry key
+        try{
+            Set-ItemProperty -Path "HKLM:\HKEY_LOCAL_MACHINE\SOFTWARE\Google\DriveFS" -Name "TrustedRootCertsFile" -Value $Store
+            Write-Log "Gdrive fix completed."
+        }
+        catch{
+            Write-Log "Gdrive fix FAILED. Please complete manually"
+            $_
+        }
+    }
+    else{
+        Write-Log "Google drive not detected. Skipping."
+    }
+}
 
 function Main {
     # Make sure it's being run as admin
@@ -141,6 +170,7 @@ function Main {
     #adds/rewrites certificate bundle
     New-Bundle
     #Adds enviroment variables for all programs
+    Update-Gdrive
     Update-Apps
 }
 
