@@ -9,6 +9,9 @@ $appsenv = @{ openssl = "SSL_CERT_FILE";
                 aws = "AWS_CA_BUNDLE"
             }
 
+$appscmd = @{ git = "git config --global http.sslCAInfo {{bundle.pem}}"; 
+        }
+
 function Add-Folder {
     ### Create Folder in user home ###
     try {
@@ -132,6 +135,25 @@ function Update-Apps{
 }
 
 
+function Update-CMDApps{
+    foreach ($key in $appscmd.Keys) {
+        $cmd = $appscmd[$key].replace("{{bundle.pem}}", $Store) + " >> $($LogFile)"
+        $exe = $cmd -Split " " 
+        $found = [bool] (Get-Command -ErrorAction Ignore -Type Application $exe[0])
+        if ($found){
+            Write-Log "fixing  $($key) with command $($cmd)"
+            Invoke-Expression $cmd
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "$($key) fixed"
+            } else {
+                Write-Host "Problem running $($key) fix. Check $($LogFile) for more details."
+            }            
+        }else{ #not found
+            Write-Log "Program: $($key) not detected, skipping"
+        }
+    }
+}
+
 function Update-Gdrive{
     #doc https://support.google.com/a/answer/7644837?hl=en
     #check if gdrive exist
@@ -139,7 +161,6 @@ function Update-Gdrive{
     $test =  test-path -path $path
     if($test){
         # check if key exist
-        Write-Log "Google Drive detected. Fixing..."
         try{
             Get-ItemProperty -path "HKLM:\HKEY_LOCAL_MACHINE\SOFTWARE\Google\DriveFS" -Name "TrustedRootCertsFile" --ErrorAction Stop
             Write-Log "Registry key already exist. Overwriting."
@@ -148,14 +169,7 @@ function Update-Gdrive{
             Write-Log "Registry key doesn't exist. Creating."
         }
         #changing registry key
-        try{
-            Set-ItemProperty -Path "HKLM:\HKEY_LOCAL_MACHINE\SOFTWARE\Google\DriveFS" -Name "TrustedRootCertsFile" -Value $Store
-            Write-Log "Gdrive fix completed."
-        }
-        catch{
-            Write-Log "Gdrive fix FAILED. Please complete manually"
-            $_
-        }
+        Set-ItemProperty -Path "HKLM:\HKEY_LOCAL_MACHINE\SOFTWARE\Google\DriveFS" -Name "TrustedRootCertsFile" -Value $Store
     }
     else{
         Write-Log "Google drive not detected. Skipping."
@@ -171,6 +185,7 @@ function Main {
     New-Bundle
     #Adds enviroment variables for all programs
     Update-Gdrive
+    Update-CMDApps
     Update-Apps
 }
 
