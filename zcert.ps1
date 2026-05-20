@@ -1,6 +1,6 @@
-$Folder = "$($home)\zscaler-cert-app-store"
-$LogFile = "zcertlogs.txt"
+$Folder = Join-Path -Path $Env:ProgramFiles -ChildPath "ZscalerCmd"
 $Store = Join-Path -Path $Folder -ChildPath "zscalerCAbundle.pem"
+$LogFile = "zcertlogs.txt"
 $appsenv = @{ openssl = "SSL_CERT_FILE"; 
                 curl = "CURL_CA_BUNDLE"; 
                 python = "REQUESTS_CA_BUNDLE";
@@ -9,7 +9,7 @@ $appsenv = @{ openssl = "SSL_CERT_FILE";
                 aws = "AWS_CA_BUNDLE"
             }
 
-$appscmd = @{ git = "git config --global http.sslCAInfo {{bundle.pem}}"; 
+$appscmd = @{ git = "git config --system http.sslCAInfo `"{{bundle.pem}}`" --add"; 
         }
 
 function Add-Folder {
@@ -79,7 +79,7 @@ function New-Bundle{
         }
     }
     if ($found){
-        Write-Log 'Zscaler root found.'
+        Write-Log 'Zscaler root found. Generating certificate bundle, please wait.'
         #getting certificate authroities only
         foreach($cert in $certs){
             #going over extensiosn
@@ -129,7 +129,7 @@ function Update-Apps{
         }catch{ #not found
             Write-Log "Fixing: $($key)"
         }
-        setx $appsenv[$key] "${Store}"
+        setx $appsenv[$key] "${Store}" /M
         Write-Log "Enviroment variable: $($appsenv[$key]) set to $($Store)"
     }
 }
@@ -141,12 +141,12 @@ function Update-CMDApps{
         $exe = $cmd -Split " " 
         $found = [bool] (Get-Command -ErrorAction Ignore -Type Application $exe[0])
         if ($found){
-            Write-Log "fixing  $($key) with command $($cmd)"
+            Write-Log "fixing: `"$($key)`" with command: `"$($cmd)`""
             Invoke-Expression $cmd
             if ($LASTEXITCODE -eq 0) {
-                Write-Host "$($key) fixed"
+               Write-Log "$($key) fixed"
             } else {
-                Write-Host "Problem running $($key) fix. Check $($LogFile) for more details."
+               Write-Log "Problem running $($key) fix. Check $($LogFile) for more details."
             }            
         }else{ #not found
             Write-Log "Program: $($key) not detected, skipping"
